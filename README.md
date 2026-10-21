@@ -1,4 +1,4 @@
-# Qoder Privacy Hardening Tool v2.0
+# Qoder Privacy Hardening Tool v2.1
 
 Production-grade privacy auditing, telemetry neutralization, and hardening tools for the **[Qoder](https://qoder.com)** AI workbench (Windows & Linux / Ubuntu).
 
@@ -12,12 +12,12 @@ This tool surgically neutralizes known telemetry sinks at the JavaScript runtime
 
 ### Neutralized Telemetry Vectors
 
-| # | Signature / Vector | Target Endpoint | Description |
-| :---: | :--- | :--- | :--- |
-| **1** | `businessFinish.report` (`vLi`) | `https://api2.qoder.sh/algo/api/v2/service/business/finish` | Neutralizes session business reports and prompt leak pathways. |
-| **2** | `codeStatistics.track` (`MTt`) | `https://center.qoder.sh/api/v1/tracking` | Disables code metrics, character generation counts, and token tracking. |
-| **3** | `G$` Dispatcher | `https://center.qoder.sh/api/v1/tracking` | Blocks telemetry payloads transmitting local **Git remote URLs** and turn metadata. |
-| **4** | `tvl` Transport Sink | `https://center.qoder.sh/api/v1/tracking` | Neutralizes the central network sink for `aiCodeTracking.report`. |
+| # | Telemetry Vector | Target Endpoint | Signature in v0.4.8+ | Signature in v0.4.3 | Description |
+| :---: | :--- | :--- | :--- | :--- | :--- |
+| **1** | `businessFinish.report` | `https://api2.qoder.sh/algo/api/v2/service/business/finish` | `s4i` | `vLi` | Neutralizes session business reports and prompt leak pathways. |
+| **2** | `codeStatistics.track` | `https://center.qoder.sh/api/v1/tracking` | `Vvt` | `MTt` | Disables code metrics, character generation counts, and token tracking. |
+| **3** | Dispatcher (Git Metadata) | `https://center.qoder.sh/api/v1/tracking` | `_ee` | `G$` | Blocks telemetry payloads transmitting local **Git remote URLs** and turn metadata. |
+| **4** | Transport Network Sink | `https://center.qoder.sh/api/v1/tracking` | `I9l` | `tvl` | Neutralizes the central network sink for `aiCodeTracking.report`. |
 
 ---
 
@@ -25,6 +25,7 @@ This tool surgically neutralizes known telemetry sinks at the JavaScript runtime
 
 Modifying minified runtime code carries risks if done naively. This tool was engineered with strict production safety constraints:
 
+- **Multi-Version Profile Auto-Detection**: Automatically identifies the matching signature profile for your Qoder release.
 - **Exact Uniqueness Constraint (`count === 1`)**: Every signature to be replaced must match **exactly once** in the runtime file. If a signature matches zero times or multiple times, the tool immediately **fails closed** without touching the disk.
 - **Cryptographic SHA-256 Verification**: Calculates SHA-256 hashes before and after every state transition to guarantee integrity.
 - **Pre-Patch Rollback Backups**: Before modifying any bytes, an exact pre-patch backup (`*.bak.<timestamp>`) is created and verified by hash comparison.
@@ -36,7 +37,7 @@ Modifying minified runtime code carries risks if done naively. This tool was eng
 
 ## Tested Environments
 
-- **Qoder Versions**: `v0.4.3` (Stable)
+- **Qoder Versions**: `v0.4.8+` (Latest), `v0.4.3` (Legacy)
 - **Linux**: Ubuntu 22.04 / 24.04 LTS (x86_64, `/opt/Qoder`)
 - **Windows**: Windows 10 / 11 (x64, `%LOCALAPPDATA%\Programs\Qoder`)
 
@@ -98,6 +99,10 @@ apply-qoder-privacy-patch.bat
   ```cmd
   apply-qoder-privacy-patch.bat --test
   ```
+- **Dry-run simulation**:
+  ```cmd
+  apply-qoder-privacy-patch.bat --dry-run
+  ```
 - **Apply hardening patch**:
   ```cmd
   apply-qoder-privacy-patch.bat --apply
@@ -111,21 +116,23 @@ apply-qoder-privacy-patch.bat
 
 ## Verification Audit Output Example
 
-When running `--test` (or option `1`), the tool reports the cryptographic status of each telemetry vector:
+When running `--test` (or option `1`), the tool reports the cryptographic status and detected profile:
 
 ```text
 ================================================================================
-                     QODER PRIVACY HARDENING TOOL v2.0                          
+                     QODER PRIVACY HARDENING TOOL v2.1                          
 ================================================================================
 Qoder Root  : /opt/Qoder
-Qoder Ver   : 0.4.3
+Qoder Ver   : 0.4.8
+Profile     : 0.4.8+ (Detected)
 Target File : /opt/Qoder/resources/app.asar.unpacked/node_modules/@qoder-ai/qoder-agent-sdk/dist/_worker/qoder-worker-runtime.obf.mjs
 
 --- RUNNING PRIVACY VERIFICATION AUDIT ---
 
-Qoder Version : 0.4.3
-Runtime SHA256: 7B8392513FD3EEB0173DE2506FEC8FDD426CA1A6E97A0965F21D74256E1EEF9D
-File Size     : 33191719 bytes
+Qoder Version : 0.4.8
+Patch Profile : 0.4.8+
+Runtime SHA256: 0BA946BA28FE5710EBB0D741B232AC530027F785EB7F55EDBCB4D1C049E87CEA
+File Size     : 33296649 bytes
 Runtime State : PRISTINE
 
 Telemetry Vector Signatures:
@@ -134,13 +141,14 @@ Telemetry Vector Signatures:
    Endpoint: POST https://api2.qoder.sh/algo/api/v2/service/business/finish
 2. codeStatistics.track (Code Metrics)       : [EXPOSED / UNPATCHED]
    Endpoint: POST https://center.qoder.sh/api/v1/tracking (code metrics)
-3. G$ Dispatcher (Git Remote & Metadata)     : [EXPOSED / UNPATCHED]
+3. _ee Dispatcher (Git Remote & Metadata)    : [EXPOSED / UNPATCHED]
    Endpoint: POST https://center.qoder.sh/api/v1/tracking (git_remote + turn metadata)
-4. tvl Transport (Network Sink)              : [EXPOSED / UNPATCHED]
+4. I9l Transport (Network Sink)              : [EXPOSED / UNPATCHED]
    Endpoint: POST https://center.qoder.sh/api/v1/tracking (transport sink)
 --------------------------------------------------------------------------------
 
-Backups Available: 0 (0 rollback point(s), 0 safety backup(s))
+Backups Available: 1 (1 rollback point(s), 0 safety backup(s))
+  - qoder-worker-runtime.obf.mjs.bak.20261005_232643 (2026-10-05 23:26:43)
 
 Summary & Assessment:
 [AUDIT] Runtime is in PRISTINE original state. All telemetry code paths are active.

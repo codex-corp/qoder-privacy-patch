@@ -13,8 +13,13 @@ exec python3 "$0" "$@"
 # ==============================================================================
 # Qoder Privacy Hardening Tool (Linux / Ubuntu Production Hardened)
 #
+# Supported Qoder Versions:
+#  - v0.4.8+ (Signatures: s4i, Vvt, _ee, I9l)
+#  - v0.4.3  (Signatures: vLi, MTt, G$, tvl)
+#
 # Hardening Specifications:
 #  - Dynamic Qoder path resolution (portable across Linux distros & installs)
+#  - Multi-version profile auto-detection
 #  - Strict fail-closed verification on unknown versions or layout changes
 #  - Exact uniqueness constraint (count === 1) on all patch targets
 #  - Atomic writes with pre-modification and pre-restore safety backups
@@ -158,104 +163,161 @@ def resolve_qoder_version(root):
         except Exception:
             pass
 
-    return "0.4.3"
+    return "0.4.8"
 
 
-# Telemetry Patch Definitions (Identical signatures to Windows specification)
-PATCH_DEFS = [
-    {
-        "id": "vLi",
-        "name": "1. businessFinish.report (Prompt Leak)",
-        "description": "POST https://api2.qoder.sh/algo/api/v2/service/business/finish",
-        "unpatched_sig": "async function vLi(A){let{sessionId:e,businessInfo:t}=A;",
-        "replace_target": "async function vLi(A){let{sessionId:e,businessInfo:t}=A;",
-        "replace_with": "async function vLi(A){return;let{sessionId:e,businessInfo:t}=A;",
-        "patched_sig": "async function vLi(A){return;let{sessionId:e,businessInfo:t}=A;",
-    },
-    {
-        "id": "MTt",
-        "name": "2. codeStatistics.track (Code Metrics)",
-        "description": "POST https://center.qoder.sh/api/v1/tracking (code metrics)",
-        "unpatched_sig": 'MTt=class{constructor(A){this.sender=A}async track(A){await this.sender.send(yi.builder().operation("codeStatistics.track")',
-        "replace_target": "MTt=class{constructor(A){this.sender=A}async track(A){",
-        "replace_with": "MTt=class{constructor(A){this.sender=A}async track(A){return;",
-        "patched_sig": 'MTt=class{constructor(A){this.sender=A}async track(A){return;await this.sender.send(yi.builder().operation("codeStatistics.track")',
-    },
-    {
-        "id": "G$",
-        "name": "3. G$ Dispatcher (Git Remote & Metadata)",
-        "description": "POST https://center.qoder.sh/api/v1/tracking (git_remote + turn metadata)",
-        "unpatched_sig": "async function G$(A){A.beforeSend?.();let e=await Avl",
-        "replace_target": "async function G$(A){A.beforeSend?.();let e=await Avl",
-        "replace_with": "async function G$(A){A.beforeSend?.();return;let e=await Avl",
-        "patched_sig": "async function G$(A){A.beforeSend?.();return;let e=await Avl",
-    },
-    {
-        "id": "tvl",
-        "name": "4. tvl Transport (Network Sink)",
-        "description": "POST https://center.qoder.sh/api/v1/tracking (transport sink)",
-        "unpatched_sig": 'async function tvl(A,e="aiCodeTracking.report",t,i){if(i?.(),!Jd())',
-        "replace_target": 'async function tvl(A,e="aiCodeTracking.report",t,i){if(i?.(),!Jd())',
-        "replace_with": 'async function tvl(A,e="aiCodeTracking.report",t,i){return;if(i?.(),!Jd())',
-        "patched_sig": 'async function tvl(A,e="aiCodeTracking.report",t,i){return;if(i?.(),!Jd())',
-    }
-]
+# Telemetry Patch Profiles (Versioned signatures)
+PROFILES = {
+    "0.4.8+": [
+        {
+            "id": "s4i",
+            "name": "1. businessFinish.report (Prompt Leak)",
+            "description": "POST https://api2.qoder.sh/algo/api/v2/service/business/finish",
+            "unpatched_sig": "async function s4i(A){let{sessionId:e,businessInfo:t}=A;",
+            "replace_target": "async function s4i(A){let{sessionId:e,businessInfo:t}=A;",
+            "replace_with": "async function s4i(A){return;let{sessionId:e,businessInfo:t}=A;",
+            "patched_sig": "async function s4i(A){return;let{sessionId:e,businessInfo:t}=A;",
+        },
+        {
+            "id": "Vvt",
+            "name": "2. codeStatistics.track (Code Metrics)",
+            "description": "POST https://center.qoder.sh/api/v1/tracking (code metrics)",
+            "unpatched_sig": 'Vvt=class{constructor(A){this.pipeline=A}async track(A){let e=di.builder().operation("codeStatistics.track")',
+            "replace_target": "Vvt=class{constructor(A){this.pipeline=A}async track(A){",
+            "replace_with": "Vvt=class{constructor(A){this.pipeline=A}async track(A){return;",
+            "patched_sig": 'Vvt=class{constructor(A){this.pipeline=A}async track(A){return;let e=di.builder().operation("codeStatistics.track")',
+        },
+        {
+            "id": "_ee",
+            "name": "3. _ee Dispatcher (Git Remote & Metadata)",
+            "description": "POST https://center.qoder.sh/api/v1/tracking (git_remote + turn metadata)",
+            "unpatched_sig": "async function _ee(A){A.beforeSend?.();let e=await h9l",
+            "replace_target": "async function _ee(A){A.beforeSend?.();let e=await h9l",
+            "replace_with": "async function _ee(A){A.beforeSend?.();return;let e=await h9l",
+            "patched_sig": "async function _ee(A){A.beforeSend?.();return;let e=await h9l",
+        },
+        {
+            "id": "I9l",
+            "name": "4. I9l Transport (Network Sink)",
+            "description": "POST https://center.qoder.sh/api/v1/tracking (transport sink)",
+            "unpatched_sig": 'async function I9l(A,e="aiCodeTracking.report",t,i){if(i?.(),!Kd())',
+            "replace_target": 'async function I9l(A,e="aiCodeTracking.report",t,i){if(i?.(),!Kd())',
+            "replace_with": 'async function I9l(A,e="aiCodeTracking.report",t,i){return;if(i?.(),!Kd())',
+            "patched_sig": 'async function I9l(A,e="aiCodeTracking.report",t,i){return;if(i?.(),!Kd())',
+        }
+    ],
+    "0.4.3": [
+        {
+            "id": "vLi",
+            "name": "1. businessFinish.report (Prompt Leak)",
+            "description": "POST https://api2.qoder.sh/algo/api/v2/service/business/finish",
+            "unpatched_sig": "async function vLi(A){let{sessionId:e,businessInfo:t}=A;",
+            "replace_target": "async function vLi(A){let{sessionId:e,businessInfo:t}=A;",
+            "replace_with": "async function vLi(A){return;let{sessionId:e,businessInfo:t}=A;",
+            "patched_sig": "async function vLi(A){return;let{sessionId:e,businessInfo:t}=A;",
+        },
+        {
+            "id": "MTt",
+            "name": "2. codeStatistics.track (Code Metrics)",
+            "description": "POST https://center.qoder.sh/api/v1/tracking (code metrics)",
+            "unpatched_sig": 'MTt=class{constructor(A){this.sender=A}async track(A){await this.sender.send(yi.builder().operation("codeStatistics.track")',
+            "replace_target": "MTt=class{constructor(A){this.sender=A}async track(A){",
+            "replace_with": "MTt=class{constructor(A){this.sender=A}async track(A){return;",
+            "patched_sig": 'MTt=class{constructor(A){this.sender=A}async track(A){return;await this.sender.send(yi.builder().operation("codeStatistics.track")',
+        },
+        {
+            "id": "G$",
+            "name": "3. G$ Dispatcher (Git Remote & Metadata)",
+            "description": "POST https://center.qoder.sh/api/v1/tracking (git_remote + turn metadata)",
+            "unpatched_sig": "async function G$(A){A.beforeSend?.();let e=await Avl",
+            "replace_target": "async function G$(A){A.beforeSend?.();let e=await Avl",
+            "replace_with": "async function G$(A){A.beforeSend?.();return;let e=await Avl",
+            "patched_sig": "async function G$(A){A.beforeSend?.();return;let e=await Avl",
+        },
+        {
+            "id": "tvl",
+            "name": "4. tvl Transport (Network Sink)",
+            "description": "POST https://center.qoder.sh/api/v1/tracking (transport sink)",
+            "unpatched_sig": 'async function tvl(A,e="aiCodeTracking.report",t,i){if(i?.(),!Jd())',
+            "replace_target": 'async function tvl(A,e="aiCodeTracking.report",t,i){if(i?.(),!Jd())',
+            "replace_with": 'async function tvl(A,e="aiCodeTracking.report",t,i){return;if(i?.(),!Jd())',
+            "patched_sig": 'async function tvl(A,e="aiCodeTracking.report",t,i){return;if(i?.(),!Jd())',
+        }
+    ]
+}
 
 
 def evaluate_runtime_state(content):
-    results = []
-    patched_count = 0
-    unpatched_count = 0
-    has_ambiguous = False
+    # Try each profile to find a matching signature set
+    best_eval = None
 
-    for p in PATCH_DEFS:
-        c_patched   = content.count(p["patched_sig"])
-        c_unpatched = content.count(p["unpatched_sig"])
+    for profile_name, patch_defs in PROFILES.items():
+        results = []
+        patched_count = 0
+        unpatched_count = 0
+        has_ambiguous = False
 
-        if c_patched > 1 or c_unpatched > 1:
-            has_ambiguous = True
+        for p in patch_defs:
+            c_patched   = content.count(p["patched_sig"])
+            c_unpatched = content.count(p["unpatched_sig"])
 
-        is_patched   = (c_patched == 1 and c_unpatched == 0)
-        is_unpatched = (c_unpatched == 1 and c_patched == 0)
+            if c_patched > 1 or c_unpatched > 1:
+                has_ambiguous = True
 
-        if is_patched:
-            patched_count += 1
-        if is_unpatched:
-            unpatched_count += 1
+            is_patched   = (c_patched == 1 and c_unpatched == 0)
+            is_unpatched = (c_unpatched == 1 and c_patched == 0)
 
-        results.append({
-            "id": p["id"],
-            "name": p["name"],
-            "description": p["description"],
-            "is_patched": is_patched,
-            "is_unpatched": is_unpatched,
-            "patched_count": c_patched,
-            "unpatched_count": c_unpatched,
-        })
+            if is_patched:
+                patched_count += 1
+            if is_unpatched:
+                unpatched_count += 1
 
-    state = "UNKNOWN"
-    if not has_ambiguous:
-        if patched_count == 4 and unpatched_count == 0:
-            state = "HARDENED"
-        elif unpatched_count == 4 and patched_count == 0:
-            state = "PRISTINE"
-        elif patched_count > 0 or unpatched_count > 0:
-            state = "PARTIAL"
+            results.append({
+                "id": p["id"],
+                "name": p["name"],
+                "description": p["description"],
+                "is_patched": is_patched,
+                "is_unpatched": is_unpatched,
+                "patched_count": c_patched,
+                "unpatched_count": c_unpatched,
+            })
 
-    return {
-        "state": state,
-        "vector_states": results,
-        "has_ambiguous": has_ambiguous,
-    }
+        state = "UNKNOWN"
+        if not has_ambiguous:
+            if patched_count == 4 and unpatched_count == 0:
+                state = "HARDENED"
+            elif unpatched_count == 4 and patched_count == 0:
+                state = "PRISTINE"
+            elif patched_count > 0 or unpatched_count > 0:
+                state = "PARTIAL"
+
+        eval_obj = {
+            "profile": profile_name,
+            "patch_defs": patch_defs,
+            "state": state,
+            "vector_states": results,
+            "has_ambiguous": has_ambiguous,
+            "matched_vectors": patched_count + unpatched_count,
+        }
+
+        # If 4/4 vectors matched in this profile, it is our exact profile
+        if eval_obj["matched_vectors"] == 4 and not has_ambiguous:
+            return eval_obj
+
+        if best_eval is None or eval_obj["matched_vectors"] > best_eval["matched_vectors"]:
+            best_eval = eval_obj
+
+    return best_eval
 
 
-def show_header(qoder_root, qoder_version, target_file):
+def show_header(qoder_root, qoder_version, target_file, profile_name="Auto-Detect"):
     clear_screen()
     print_colored("================================================================================", CLR_CYAN, bold=True)
-    print_colored("                     QODER PRIVACY HARDENING TOOL v2.0                          ", CLR_CYAN, bold=True)
+    print_colored("                     QODER PRIVACY HARDENING TOOL v2.1                          ", CLR_CYAN, bold=True)
     print_colored("================================================================================", CLR_CYAN, bold=True)
     print_colored(f"Qoder Root  : {qoder_root}", CLR_GRAY)
     print_colored(f"Qoder Ver   : {qoder_version}", CLR_GRAY)
+    print_colored(f"Profile     : {profile_name}", CLR_GRAY)
     print_colored(f"Target File : {target_file}\n", CLR_GRAY)
 
 
@@ -292,10 +354,8 @@ def ensure_write_permissions(target_dir, target_file, action_name):
 
 
 def test_privacy_status(qoder_root, qoder_version, target_dir, target_file):
-    show_header(qoder_root, qoder_version, target_file)
-    print_colored("--- RUNNING PRIVACY VERIFICATION AUDIT ---\n", CLR_YELLOW, bold=True)
-
     if not os.path.isfile(target_file):
+        show_header(qoder_root, qoder_version, target_file)
         print_colored("[ERROR] Target runtime file not found:", CLR_RED, bold=True)
         print_colored(f"  {target_file}", CLR_RED)
         print_colored("Status: UNKNOWN VERSION / MISSING RUNTIME\n", CLR_RED, bold=True)
@@ -309,6 +369,10 @@ def test_privacy_status(qoder_root, qoder_version, target_dir, target_file):
 
     eval_res = evaluate_runtime_state(content)
     state = eval_res["state"]
+    profile_name = eval_res["profile"]
+
+    show_header(qoder_root, qoder_version, target_file, f"{profile_name} (Detected)")
+    print_colored("--- RUNNING PRIVACY VERIFICATION AUDIT ---\n", CLR_YELLOW, bold=True)
 
     state_color = {
         "HARDENED": CLR_GREEN,
@@ -317,6 +381,7 @@ def test_privacy_status(qoder_root, qoder_version, target_dir, target_file):
     }.get(state, CLR_RED)
 
     print_colored(f"Qoder Version : {qoder_version}", CLR_WHITE)
+    print_colored(f"Patch Profile : {profile_name}", CLR_WHITE)
     print_colored(f"Runtime SHA256: {file_hash}", CLR_WHITE)
     print_colored(f"File Size     : {file_size} bytes", CLR_WHITE)
     print_colored("Runtime State : ", CLR_WHITE, end="")
@@ -382,10 +447,8 @@ def test_privacy_status(qoder_root, qoder_version, target_dir, target_file):
 
 
 def dry_run_patch(qoder_root, qoder_version, target_dir, target_file):
-    show_header(qoder_root, qoder_version, target_file)
-    print_colored("--- RUNNING DRY-RUN SIMULATION (NO DISK MODIFICATIONS) ---\n", CLR_YELLOW, bold=True)
-
     if not os.path.isfile(target_file):
+        show_header(qoder_root, qoder_version, target_file)
         print_colored("[FATAL ERROR] Target runtime file not found:", CLR_RED, bold=True)
         print_colored(f"  {target_file}", CLR_RED)
         return 1
@@ -396,7 +459,13 @@ def dry_run_patch(qoder_root, qoder_version, target_dir, target_file):
 
     eval_res = evaluate_runtime_state(content)
     state = eval_res["state"]
+    profile_name = eval_res["profile"]
+    patch_defs = eval_res["patch_defs"]
 
+    show_header(qoder_root, qoder_version, target_file, f"{profile_name} (Detected)")
+    print_colored("--- RUNNING DRY-RUN SIMULATION (NO DISK MODIFICATIONS) ---\n", CLR_YELLOW, bold=True)
+
+    print_colored(f"Patch Profile  : {profile_name}", CLR_WHITE)
     print_colored(f"Current SHA256 : {pre_hash}", CLR_WHITE)
     print_colored(f"Current State  : {state}\n", CLR_WHITE, bold=True)
 
@@ -416,7 +485,7 @@ def dry_run_patch(qoder_root, qoder_version, target_dir, target_file):
     # Check uniqueness of all targets
     print_colored("1. Validating Signature Uniqueness Constraints:", CLR_WHITE, bold=True)
     all_valid = True
-    for p in PATCH_DEFS:
+    for p in patch_defs:
         c_patched = content.count(p["patched_sig"])
         c_unpatched = content.count(p["unpatched_sig"])
         c_target = content.count(p["replace_target"])
@@ -443,7 +512,7 @@ def dry_run_patch(qoder_root, qoder_version, target_dir, target_file):
     print_colored(f"\n2. Simulating Pre-patch Backup Step:", CLR_WHITE, bold=True)
     print_colored(f"   Destination : {simulated_backup}", CLR_CYAN)
     print_colored(f"   Validation  : Real apply calculates SHA256 of backup and verifies against pre-hash ({pre_hash})", CLR_GRAY)
-    
+
     dir_writable = os.access(target_dir, os.W_OK)
     file_writable = os.access(target_file, os.W_OK)
     if dir_writable and file_writable:
@@ -454,7 +523,7 @@ def dry_run_patch(qoder_root, qoder_version, target_dir, target_file):
     # In-memory patch simulation
     print_colored(f"\n3. Simulating Surgical Patch Operations (In-Memory):", CLR_WHITE, bold=True)
     new_content = content
-    for p in PATCH_DEFS:
+    for p in patch_defs:
         c_patched = new_content.count(p["patched_sig"])
         if c_patched == 0:
             idx = new_content.find(p["replace_target"])
@@ -486,6 +555,7 @@ def dry_run_patch(qoder_root, qoder_version, target_dir, target_file):
 
     print_colored("\n" + "=" * 80, CLR_GREEN)
     print_colored("[DRY-RUN SUCCESS] All checks passed cleanly!", CLR_GREEN, bold=True)
+    print_colored(f"  * Detected Profile: {profile_name}", CLR_GREEN)
     print_colored("  * Pre-patch backups verified & guaranteed prior to any write.", CLR_GREEN)
     print_colored("  * All 4 telemetry signatures match with exact uniqueness (count == 1).", CLR_GREEN)
     print_colored("  * Post-patch evaluation reaches 100% HARDENED state.", CLR_GREEN)
@@ -496,10 +566,9 @@ def dry_run_patch(qoder_root, qoder_version, target_dir, target_file):
 
 def apply_privacy_patch(qoder_root, qoder_version, target_dir, target_file):
     ensure_write_permissions(target_dir, target_file, "apply patch")
-    show_header(qoder_root, qoder_version, target_file)
-    print_colored("--- APPLYING PRIVACY HARDENING PATCHES ---\n", CLR_YELLOW, bold=True)
 
     if not os.path.isfile(target_file):
+        show_header(qoder_root, qoder_version, target_file)
         print_colored("[FATAL ERROR] Target runtime file not found:", CLR_RED, bold=True)
         print_colored(f"  {target_file}", CLR_RED)
         return 1
@@ -510,6 +579,11 @@ def apply_privacy_patch(qoder_root, qoder_version, target_dir, target_file):
 
     eval_res = evaluate_runtime_state(content)
     state = eval_res["state"]
+    profile_name = eval_res["profile"]
+    patch_defs = eval_res["patch_defs"]
+
+    show_header(qoder_root, qoder_version, target_file, f"{profile_name} (Detected)")
+    print_colored("--- APPLYING PRIVACY HARDENING PATCHES ---\n", CLR_YELLOW, bold=True)
 
     if state == "HARDENED":
         print_colored("[INFO] All 4 patches are ALREADY applied. Runtime is already in HARDENED state.", CLR_GREEN, bold=True)
@@ -528,7 +602,7 @@ def apply_privacy_patch(qoder_root, qoder_version, target_dir, target_file):
         return 1
 
     # Strict fail-closed verification: each unpatched target must occur EXACTLY once
-    for p in PATCH_DEFS:
+    for p in patch_defs:
         c_patched = content.count(p["patched_sig"])
         if c_patched == 0:
             c_unpatched = content.count(p["unpatched_sig"])
@@ -567,7 +641,7 @@ def apply_privacy_patch(qoder_root, qoder_version, target_dir, target_file):
 
     # Step 2: Apply surgical patches strictly to verified targets
     new_content = content
-    for p in PATCH_DEFS:
+    for p in patch_defs:
         c_patched = new_content.count(p["patched_sig"])
         if c_patched == 0:
             idx = new_content.find(p["replace_target"])
@@ -611,6 +685,7 @@ def apply_privacy_patch(qoder_root, qoder_version, target_dir, target_file):
         return 1
 
     print_colored("\n[SUCCESS] Privacy hardening successfully applied and verified.", CLR_GREEN, bold=True)
+    print_colored(f"Applied Profile  : {profile_name}", CLR_CYAN)
     print_colored(f"Pre-patch SHA256 : {pre_hash}", CLR_WHITE)
     print_colored(f"Post-patch SHA256: {post_hash}", CLR_GREEN, bold=True)
     print_colored(f"Backup preserved : {os.path.basename(backup_file)}", CLR_WHITE)
@@ -726,7 +801,7 @@ def main():
         code = restore_backup(qoder_root, qoder_version, target_dir, target_file)
         sys.exit(code)
     elif mode in ("--help", "-h"):
-        print_colored(f"Qoder Privacy Hardening Tool v2.0 (Ubuntu / Linux)", CLR_CYAN, bold=True)
+        print_colored(f"Qoder Privacy Hardening Tool v2.1 (Ubuntu / Linux)", CLR_CYAN, bold=True)
         print("\nUsage:")
         print("  ./apply-qoder-privacy-patch.sh [option]\n")
         print("Options:")

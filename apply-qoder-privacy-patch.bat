@@ -6,10 +6,15 @@ exit /b %ERRORLEVEL%
 param([string]$Mode)
 
 # ==============================================================================
-# Qoder Privacy Hardening Tool (Production Hardened)
+# Qoder Privacy Hardening Tool v2.1 (Production Hardened)
+#
+# Supported Qoder Versions:
+#  - v0.4.8+ (Signatures: s4i, Vvt, _ee, I9l)
+#  - v0.4.3  (Signatures: vLi, MTt, G$, tvl)
 #
 # Hardening Specifications:
 #  - Dynamic Qoder path resolution (portable across all user profiles)
+#  - Multi-version profile auto-detection
 #  - Strict fail-closed verification on unknown versions or layout changes
 #  - Exact uniqueness constraint (count === 1) on all patch targets
 #  - Atomic writes with pre-modification and pre-restore safety backups
@@ -72,110 +77,172 @@ if (Test-Path $qoderExe) {
 $targetDir  = Join-Path $qoderRoot "resources\app.asar.unpacked\node_modules\@qoder-ai\qoder-agent-sdk\dist\_worker"
 $targetFile = Join-Path $targetDir "qoder-worker-runtime.obf.mjs"
 
-# Exact signature definitions
-$patchDefs = @(
+# Multi-version signature profiles
+$profiles = @(
     @{
-        Id            = "vLi"
-        Name          = "1. businessFinish.report (Prompt Leak)"
-        Description   = "POST https://api2.qoder.sh/algo/api/v2/service/business/finish"
-        UnpatchedSig  = "async function vLi(A){let{sessionId:e,businessInfo:t}=A;"
-        ReplaceTarget = "async function vLi(A){let{sessionId:e,businessInfo:t}=A;"
-        ReplaceWith   = "async function vLi(A){return;let{sessionId:e,businessInfo:t}=A;"
-        PatchedSig    = "async function vLi(A){return;let{sessionId:e,businessInfo:t}=A;"
+        Name = "0.4.8+"
+        Defs = @(
+            @{
+                Id            = "s4i"
+                Name          = "1. businessFinish.report (Prompt Leak)"
+                Description   = "POST https://api2.qoder.sh/algo/api/v2/service/business/finish"
+                UnpatchedSig  = "async function s4i(A){let{sessionId:e,businessInfo:t}=A;"
+                ReplaceTarget = "async function s4i(A){let{sessionId:e,businessInfo:t}=A;"
+                ReplaceWith   = "async function s4i(A){return;let{sessionId:e,businessInfo:t}=A;"
+                PatchedSig    = "async function s4i(A){return;let{sessionId:e,businessInfo:t}=A;"
+            },
+            @{
+                Id            = "Vvt"
+                Name          = "2. codeStatistics.track (Code Metrics)"
+                Description   = "POST https://center.qoder.sh/api/v1/tracking (code metrics)"
+                UnpatchedSig  = 'Vvt=class{constructor(A){this.pipeline=A}async track(A){let e=di.builder().operation("codeStatistics.track")'
+                ReplaceTarget = "Vvt=class{constructor(A){this.pipeline=A}async track(A){"
+                ReplaceWith   = "Vvt=class{constructor(A){this.pipeline=A}async track(A){return;"
+                PatchedSig    = 'Vvt=class{constructor(A){this.pipeline=A}async track(A){return;let e=di.builder().operation("codeStatistics.track")'
+            },
+            @{
+                Id            = "_ee"
+                Name          = "3. _ee Dispatcher (Git Remote & Metadata)"
+                Description   = "POST https://center.qoder.sh/api/v1/tracking (git_remote + turn metadata)"
+                UnpatchedSig  = "async function _ee(A){A.beforeSend?.();let e=await h9l"
+                ReplaceTarget = "async function _ee(A){A.beforeSend?.();let e=await h9l"
+                ReplaceWith   = "async function _ee(A){A.beforeSend?.();return;let e=await h9l"
+                PatchedSig    = "async function _ee(A){A.beforeSend?.();return;let e=await h9l"
+            },
+            @{
+                Id            = "I9l"
+                Name          = "4. I9l Transport (Network Sink)"
+                Description   = "POST https://center.qoder.sh/api/v1/tracking (transport sink)"
+                UnpatchedSig  = 'async function I9l(A,e="aiCodeTracking.report",t,i){if(i?.(),!Kd())'
+                ReplaceTarget = 'async function I9l(A,e="aiCodeTracking.report",t,i){if(i?.(),!Kd())'
+                ReplaceWith   = 'async function I9l(A,e="aiCodeTracking.report",t,i){return;if(i?.(),!Kd())'
+                PatchedSig    = 'async function I9l(A,e="aiCodeTracking.report",t,i){return;if(i?.(),!Kd())'
+            }
+        )
     },
     @{
-        Id            = "MTt"
-        Name          = "2. codeStatistics.track (Code Metrics)"
-        Description   = "POST https://center.qoder.sh/api/v1/tracking (code metrics)"
-        UnpatchedSig  = 'MTt=class{constructor(A){this.sender=A}async track(A){await this.sender.send(yi.builder().operation("codeStatistics.track")'
-        ReplaceTarget = "MTt=class{constructor(A){this.sender=A}async track(A){"
-        ReplaceWith   = "MTt=class{constructor(A){this.sender=A}async track(A){return;"
-        PatchedSig    = 'MTt=class{constructor(A){this.sender=A}async track(A){return;await this.sender.send(yi.builder().operation("codeStatistics.track")'
-    },
-    @{
-        Id            = "G$"
-        Name          = "3. G$ Dispatcher (Git Remote & Metadata)"
-        Description   = "POST https://center.qoder.sh/api/v1/tracking (git_remote + turn metadata)"
-        UnpatchedSig  = "async function G`$(A){A.beforeSend?.();let e=await Avl"
-        ReplaceTarget = "async function G`$(A){A.beforeSend?.();let e=await Avl"
-        ReplaceWith   = "async function G`$(A){A.beforeSend?.();return;let e=await Avl"
-        PatchedSig    = "async function G`$(A){A.beforeSend?.();return;let e=await Avl"
-    },
-    @{
-        Id            = "tvl"
-        Name          = "4. tvl Transport (Network Sink)"
-        Description   = "POST https://center.qoder.sh/api/v1/tracking (transport sink)"
-        UnpatchedSig  = 'async function tvl(A,e="aiCodeTracking.report",t,i){if(i?.(),!Jd())'
-        ReplaceTarget = 'async function tvl(A,e="aiCodeTracking.report",t,i){if(i?.(),!Jd())'
-        ReplaceWith   = 'async function tvl(A,e="aiCodeTracking.report",t,i){return;if(i?.(),!Jd())'
-        PatchedSig    = 'async function tvl(A,e="aiCodeTracking.report",t,i){return;if(i?.(),!Jd())'
+        Name = "0.4.3"
+        Defs = @(
+            @{
+                Id            = "vLi"
+                Name          = "1. businessFinish.report (Prompt Leak)"
+                Description   = "POST https://api2.qoder.sh/algo/api/v2/service/business/finish"
+                UnpatchedSig  = "async function vLi(A){let{sessionId:e,businessInfo:t}=A;"
+                ReplaceTarget = "async function vLi(A){let{sessionId:e,businessInfo:t}=A;"
+                ReplaceWith   = "async function vLi(A){return;let{sessionId:e,businessInfo:t}=A;"
+                PatchedSig    = "async function vLi(A){return;let{sessionId:e,businessInfo:t}=A;"
+            },
+            @{
+                Id            = "MTt"
+                Name          = "2. codeStatistics.track (Code Metrics)"
+                Description   = "POST https://center.qoder.sh/api/v1/tracking (code metrics)"
+                UnpatchedSig  = 'MTt=class{constructor(A){this.sender=A}async track(A){await this.sender.send(yi.builder().operation("codeStatistics.track")'
+                ReplaceTarget = "MTt=class{constructor(A){this.sender=A}async track(A){"
+                ReplaceWith   = "MTt=class{constructor(A){this.sender=A}async track(A){return;"
+                PatchedSig    = 'MTt=class{constructor(A){this.sender=A}async track(A){return;await this.sender.send(yi.builder().operation("codeStatistics.track")'
+            },
+            @{
+                Id            = "G$"
+                Name          = "3. G$ Dispatcher (Git Remote & Metadata)"
+                Description   = "POST https://center.qoder.sh/api/v1/tracking (git_remote + turn metadata)"
+                UnpatchedSig  = "async function G`$(A){A.beforeSend?.();let e=await Avl"
+                ReplaceTarget = "async function G`$(A){A.beforeSend?.();let e=await Avl"
+                ReplaceWith   = "async function G`$(A){A.beforeSend?.();return;let e=await Avl"
+                PatchedSig    = "async function G`$(A){A.beforeSend?.();return;let e=await Avl"
+            },
+            @{
+                Id            = "tvl"
+                Name          = "4. tvl Transport (Network Sink)"
+                Description   = "POST https://center.qoder.sh/api/v1/tracking (transport sink)"
+                UnpatchedSig  = 'async function tvl(A,e="aiCodeTracking.report",t,i){if(i?.(),!Jd())'
+                ReplaceTarget = 'async function tvl(A,e="aiCodeTracking.report",t,i){if(i?.(),!Jd())'
+                ReplaceWith   = 'async function tvl(A,e="aiCodeTracking.report",t,i){return;if(i?.(),!Jd())'
+                PatchedSig    = 'async function tvl(A,e="aiCodeTracking.report",t,i){return;if(i?.(),!Jd())'
+            }
+        )
     }
 )
 
 function Evaluate-RuntimeState($content) {
-    $results = @()
-    $patchedCount = 0
-    $unpatchedCount = 0
-    $hasAmbiguous = $false
+    $bestEval = $null
 
-    foreach ($p in $patchDefs) {
-        $cPatched   = Count-Occurrences $content $p.PatchedSig
-        $cUnpatched = Count-Occurrences $content $p.UnpatchedSig
+    foreach ($prof in $profiles) {
+        $results = @()
+        $patchedCount = 0
+        $unpatchedCount = 0
+        $hasAmbiguous = $false
 
-        if ($cPatched -gt 1 -or $cUnpatched -gt 1) {
-            $hasAmbiguous = $true
+        foreach ($p in $prof.Defs) {
+            $cPatched   = Count-Occurrences $content $p.PatchedSig
+            $cUnpatched = Count-Occurrences $content $p.UnpatchedSig
+
+            if ($cPatched -gt 1 -or $cUnpatched -gt 1) {
+                $hasAmbiguous = $true
+            }
+
+            $isPatched   = ($cPatched -eq 1 -and $cUnpatched -eq 0)
+            $isUnpatched = ($cUnpatched -eq 1 -and $cPatched -eq 0)
+
+            if ($isPatched)   { $patchedCount++ }
+            if ($isUnpatched) { $unpatchedCount++ }
+
+            $results += [PSCustomObject]@{
+                Id             = $p.Id
+                Name           = $p.Name
+                Description    = $p.Description
+                IsPatched      = $isPatched
+                IsUnpatched    = $isUnpatched
+                PatchedCount   = $cPatched
+                UnpatchedCount = $cUnpatched
+            }
         }
 
-        $isPatched   = ($cPatched -eq 1 -and $cUnpatched -eq 0)
-        $isUnpatched = ($cUnpatched -eq 1 -and $cPatched -eq 0)
+        $state = "UNKNOWN"
+        if (-not $hasAmbiguous) {
+            if ($patchedCount -eq 4 -and $unpatchedCount -eq 0) {
+                $state = "HARDENED"
+            } elseif ($unpatchedCount -eq 4 -and $patchedCount -eq 0) {
+                $state = "PRISTINE"
+            } elseif ($patchedCount -gt 0 -or $unpatchedCount -gt 0) {
+                $state = "PARTIAL"
+            }
+        }
 
-        if ($isPatched)   { $patchedCount++ }
-        if ($isUnpatched) { $unpatchedCount++ }
+        $evalObj = @{
+            ProfileName    = $prof.Name
+            PatchDefs      = $prof.Defs
+            State          = $state
+            VectorStates   = $results
+            HasAmbiguous   = $hasAmbiguous
+            MatchedVectors = ($patchedCount + $unpatchedCount)
+        }
 
-        $results += [PSCustomObject]@{
-            Id             = $p.Id
-            Name           = $p.Name
-            Description    = $p.Description
-            IsPatched      = $isPatched
-            IsUnpatched    = $isUnpatched
-            PatchedCount   = $cPatched
-            UnpatchedCount = $cUnpatched
+        if ($evalObj.MatchedVectors -eq 4 -and (-not $hasAmbiguous)) {
+            return $evalObj
+        }
+
+        if ($null -eq $bestEval -or $evalObj.MatchedVectors -gt $bestEval.MatchedVectors) {
+            $bestEval = $evalObj
         }
     }
 
-    $state = "UNKNOWN"
-    if (-not $hasAmbiguous) {
-        if ($patchedCount -eq 4 -and $unpatchedCount -eq 0) {
-            $state = "HARDENED"
-        } elseif ($unpatchedCount -eq 4 -and $patchedCount -eq 0) {
-            $state = "PRISTINE"
-        } elseif ($patchedCount -gt 0 -or $unpatchedCount -gt 0) {
-            $state = "PARTIAL"
-        }
-    }
-
-    return @{
-        State        = $state
-        VectorStates = $results
-        HasAmbiguous = $hasAmbiguous
-    }
+    return $bestEval
 }
 
-function Show-Header {
+function Show-Header([string]$profileName = "Auto-Detect") {
     Clear-Host
     Write-Host "================================================================================" -ForegroundColor Cyan
-    Write-Host "                     QODER PRIVACY HARDENING TOOL v2.0                          " -ForegroundColor Cyan
+    Write-Host "                     QODER PRIVACY HARDENING TOOL v2.1                          " -ForegroundColor Cyan
     Write-Host "================================================================================" -ForegroundColor Cyan
     Write-Host "Qoder Root  : $qoderRoot" -ForegroundColor Gray
     Write-Host "Qoder Ver   : $qoderVersion" -ForegroundColor Gray
+    Write-Host "Profile     : $profileName" -ForegroundColor Gray
     Write-Host "Target File : $targetFile`n" -ForegroundColor Gray
 }
 
 function Test-PrivacyStatus {
-    Show-Header
-    Write-Host "--- RUNNING PRIVACY VERIFICATION AUDIT ---`n" -ForegroundColor Yellow
-
     if (-not (Test-Path $targetFile)) {
+        Show-Header
         Write-Host "[ERROR] Target runtime file not found:" -ForegroundColor Red
         Write-Host "  $targetFile" -ForegroundColor Red
         Write-Host "Status: UNKNOWN VERSION / MISSING RUNTIME`n" -ForegroundColor Red
@@ -188,6 +255,10 @@ function Test-PrivacyStatus {
 
     $eval = Evaluate-RuntimeState $content
     $state = $eval.State
+    $profName = "$($eval.ProfileName) (Detected)"
+
+    Show-Header $profName
+    Write-Host "--- RUNNING PRIVACY VERIFICATION AUDIT ---`n" -ForegroundColor Yellow
 
     $stateColor = switch ($state) {
         "HARDENED" { [ConsoleColor]::Green }
@@ -197,6 +268,7 @@ function Test-PrivacyStatus {
     }
 
     Write-Host "Qoder Version : $qoderVersion" -ForegroundColor White
+    Write-Host "Patch Profile : $($eval.ProfileName)" -ForegroundColor White
     Write-Host "Runtime SHA256: $hash" -ForegroundColor White
     Write-Host "File Size     : $($item.Length) bytes" -ForegroundColor White
     Write-Host "Runtime State : " -NoNewline -ForegroundColor White
@@ -261,11 +333,103 @@ function Test-PrivacyStatus {
     }
 }
 
-function Apply-PrivacyPatch {
-    Show-Header
-    Write-Host "--- APPLYING PRIVACY HARDENING PATCHES ---`n" -ForegroundColor Yellow
-
+function DryRun-PrivacyPatch {
     if (-not (Test-Path $targetFile)) {
+        Show-Header
+        Write-Host "[FATAL ERROR] Target runtime file not found:" -ForegroundColor Red
+        Write-Host "  $targetFile" -ForegroundColor Red
+        return 1
+    }
+
+    $preHash = Get-Sha256 $targetFile
+    $content = [System.IO.File]::ReadAllText($targetFile, [System.Text.Encoding]::UTF8)
+
+    $eval = Evaluate-RuntimeState $content
+    $state = $eval.State
+    $profName = "$($eval.ProfileName) (Detected)"
+    $patchDefs = $eval.PatchDefs
+
+    Show-Header $profName
+    Write-Host "--- RUNNING DRY-RUN SIMULATION (NO DISK MODIFICATIONS) ---`n" -ForegroundColor Yellow
+
+    Write-Host "Patch Profile  : $($eval.ProfileName)" -ForegroundColor White
+    Write-Host "Current SHA256 : $preHash" -ForegroundColor White
+    Write-Host "Current State  : $state`n" -ForegroundColor White
+
+    if ($state -eq "HARDENED") {
+        Write-Host "[INFO] All 4 patches are ALREADY applied. Runtime is already in HARDENED state." -ForegroundColor Green
+        return 0
+    }
+
+    if ($eval.HasAmbiguous) {
+        Write-Host "[DRY-RUN FAILED] Ambiguous signatures detected in runtime file." -ForegroundColor Red
+        return 1
+    }
+
+    if ($state -ne "PRISTINE" -and $state -ne "PARTIAL") {
+        Write-Host "[DRY-RUN FAILED] UNSUPPORTED / UNKNOWN VERSION" -ForegroundColor Red
+        return 1
+    }
+
+    Write-Host "1. Validating Signature Uniqueness Constraints:" -ForegroundColor White
+    foreach ($p in $patchDefs) {
+        $cPatched   = Count-Occurrences $content $p.PatchedSig
+        $cUnpatched = Count-Occurrences $content $p.UnpatchedSig
+        $cTarget    = Count-Occurrences $content $p.ReplaceTarget
+        if ($cPatched -eq 0) {
+            if ($cUnpatched -eq 1 -and $cTarget -eq 1) {
+                Write-Host "   [OK] $($p.Id) - Exactly 1 unpatched match found." -ForegroundColor Green
+            } else {
+                Write-Host "   [FAIL] $($p.Id) - Expected 1 match, found: unpatched=$cUnpatched, target=$cTarget" -ForegroundColor Red
+                return 1
+            }
+        } else {
+            Write-Host "   [SKIP] $($p.Id) - Already patched (1 occurrence)." -ForegroundColor DarkGray
+        }
+    }
+
+    $timestamp = (Get-Date).ToString("yyyyMMdd_HHmmss")
+    $simBackup = "$targetFile.bak.$timestamp"
+    Write-Host "`n2. Simulating Pre-patch Backup Step:" -ForegroundColor White
+    Write-Host "   Destination : $simBackup" -ForegroundColor Cyan
+
+    Write-Host "`n3. Simulating Surgical Patch Operations (In-Memory):" -ForegroundColor White
+    $newContent = $content
+    foreach ($p in $patchDefs) {
+        $cPatched = Count-Occurrences $newContent $p.PatchedSig
+        if ($cPatched -eq 0) {
+            $idx = $newContent.IndexOf($p.ReplaceTarget, [StringComparison]::Ordinal)
+            $newContent = $newContent.Substring(0, $idx) + $p.ReplaceWith + $newContent.Substring($idx + $p.ReplaceTarget.Length)
+            Write-Host "   [SIMULATED PATCH] $($p.Name)" -ForegroundColor Green
+        }
+    }
+
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($newContent)
+    $simPostHash = [BitConverter]::ToString($sha.ComputeHash($bytes)).Replace("-", "")
+    $postEval = Evaluate-RuntimeState $newContent
+
+    Write-Host "`n4. Simulating Post-Patch Audit Verification:" -ForegroundColor White
+    Write-Host "   Simulated Post-Patch SHA256: $simPostHash" -ForegroundColor White
+    Write-Host "   Simulated Runtime State    : $($postEval.State)" -ForegroundColor Green
+
+    if ($postEval.State -ne "HARDENED") {
+        Write-Host "[DRY-RUN FAILED] Post-patch validation failed!" -ForegroundColor Red
+        return 1
+    }
+
+    Write-Host "`n================================================================================" -ForegroundColor Green
+    Write-Host "[DRY-RUN SUCCESS] All checks passed cleanly!" -ForegroundColor Green
+    Write-Host "  * Detected Profile: $($eval.ProfileName)" -ForegroundColor Green
+    Write-Host "  * All 4 telemetry signatures match with exact uniqueness (count == 1)." -ForegroundColor Green
+    Write-Host "  * NO live files were modified in this dry-run." -ForegroundColor Cyan
+    Write-Host "================================================================================`n" -ForegroundColor Green
+    return 0
+}
+
+function Apply-PrivacyPatch {
+    if (-not (Test-Path $targetFile)) {
+        Show-Header
         Write-Host "[FATAL ERROR] Target runtime file not found:" -ForegroundColor Red
         Write-Host "  $targetFile" -ForegroundColor Red
         exit 1
@@ -276,6 +440,11 @@ function Apply-PrivacyPatch {
 
     $eval = Evaluate-RuntimeState $content
     $state = $eval.State
+    $profName = "$($eval.ProfileName) (Detected)"
+    $patchDefs = $eval.PatchDefs
+
+    Show-Header $profName
+    Write-Host "--- APPLYING PRIVACY HARDENING PATCHES ---`n" -ForegroundColor Yellow
 
     if ($state -eq "HARDENED") {
         Write-Host "[INFO] All 4 patches are ALREADY applied. Runtime is already in HARDENED state." -ForegroundColor Green
@@ -372,6 +541,7 @@ function Apply-PrivacyPatch {
     }
 
     Write-Host "`n[SUCCESS] Privacy hardening successfully applied and verified." -ForegroundColor Green
+    Write-Host "Applied Profile  : $($eval.ProfileName)" -ForegroundColor Cyan
     Write-Host "Pre-patch SHA256 : $preHash" -ForegroundColor White
     Write-Host "Post-patch SHA256: $postHash" -ForegroundColor Green
     Write-Host "Backup preserved : $(Split-Path -Leaf $backupFile)" -ForegroundColor White
@@ -406,7 +576,6 @@ function Restore-Backup {
     Write-Host "  Path     : $($selectedBackup.FullName)" -ForegroundColor Cyan
     Write-Host "  Modified : $($selectedBackup.LastWriteTime)" -ForegroundColor Cyan
 
-    # Verify backup exists and is readable
     try {
         $stream = [System.IO.File]::OpenRead($selectedBackup.FullName)
         $stream.Close()
@@ -464,6 +633,9 @@ function Restore-Backup {
 if ($Mode -eq "--test" -or $Mode -eq "-t") {
     $exitCode = Test-PrivacyStatus
     exit $exitCode
+} elseif ($Mode -eq "--dry-run" -or $Mode -eq "-d") {
+    $exitCode = DryRun-PrivacyPatch
+    exit $exitCode
 } elseif ($Mode -eq "--apply" -or $Mode -eq "-a") {
     $exitCode = Apply-PrivacyPatch
     exit $exitCode
@@ -477,16 +649,18 @@ do {
     Show-Header
     Write-Host "Choose an action:"
     Write-Host "  [1] Test / Verify privacy hardening status"
-    Write-Host "  [2] Apply privacy hardening patches (auto-backup)"
-    Write-Host "  [3] Restore from latest backup (with pre-restore safety snapshot)"
-    Write-Host "  [4] Exit`n"
+    Write-Host "  [2] Dry-run simulation (validate patches & backup logic without modifying files)"
+    Write-Host "  [3] Apply privacy hardening patches (auto-backup)"
+    Write-Host "  [4] Restore from latest backup (with pre-restore safety snapshot)"
+    Write-Host "  [5] Exit`n"
 
-    $choice = Read-Host "Select option [1-4]"
+    $choice = Read-Host "Select option [1-5]"
     switch ($choice) {
         "1" { Test-PrivacyStatus; Pause }
-        "2" { Apply-PrivacyPatch; Pause }
-        "3" { Restore-Backup; Pause }
-        "4" { exit 0 }
+        "2" { DryRun-PrivacyPatch; Pause }
+        "3" { Apply-PrivacyPatch; Pause }
+        "4" { Restore-Backup; Pause }
+        "5" { exit 0 }
         default { Write-Host "Invalid option." -ForegroundColor Red; Start-Sleep -Seconds 1 }
     }
-} while ($choice -ne "4")
+} while ($choice -ne "5")
