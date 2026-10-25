@@ -14,8 +14,9 @@ exec python3 "$0" "$@"
 # Qoder Privacy Hardening Tool (Linux / Ubuntu Production Hardened)
 #
 # Supported Qoder Versions:
-#  - v0.4.8+ (Signatures: s4i, Vvt, _ee, I9l)
-#  - v0.4.3  (Signatures: vLi, MTt, G$, tvl)
+#  - v0.4.11+ (Signatures: AEo, yjt, Bre, Jyu)
+#  - v0.4.8   (Signatures: s4i, Vvt, _ee, I9l)
+#  - v0.4.3   (Signatures: vLi, MTt, G$, tvl)
 #
 # Hardening Specifications:
 #  - Dynamic Qoder path resolution (portable across Linux distros & installs)
@@ -163,12 +164,50 @@ def resolve_qoder_version(root):
         except Exception:
             pass
 
-    return "0.4.8"
+    return "0.4.11"
 
 
 # Telemetry Patch Profiles (Versioned signatures)
 PROFILES = {
-    "0.4.8+": [
+    "0.4.11+": [
+        {
+            "id": "AEo",
+            "name": "1. businessFinish.report (Prompt Leak)",
+            "description": "POST https://api2.qoder.sh/algo/api/v2/service/business/finish",
+            "unpatched_sig": "async function AEo(A){let{sessionId:e,businessInfo:t}=A;",
+            "replace_target": "async function AEo(A){let{sessionId:e,businessInfo:t}=A;",
+            "replace_with": "async function AEo(A){return;let{sessionId:e,businessInfo:t}=A;",
+            "patched_sig": "async function AEo(A){return;let{sessionId:e,businessInfo:t}=A;",
+        },
+        {
+            "id": "yjt",
+            "name": "2. codeStatistics.track (Code Metrics)",
+            "description": "POST https://center.qoder.sh/api/v1/tracking (code metrics)",
+            "unpatched_sig": 'yjt=class{constructor(A){this.pipeline=A}async track(A){let e=gi.builder().operation("codeStatistics.track")',
+            "replace_target": "yjt=class{constructor(A){this.pipeline=A}async track(A){",
+            "replace_with": "yjt=class{constructor(A){this.pipeline=A}async track(A){return;",
+            "patched_sig": 'yjt=class{constructor(A){this.pipeline=A}async track(A){return;let e=gi.builder().operation("codeStatistics.track")',
+        },
+        {
+            "id": "Bre",
+            "name": "3. Bre Dispatcher (Git Remote & Metadata)",
+            "description": "POST https://center.qoder.sh/api/v1/tracking (git_remote + turn metadata)",
+            "unpatched_sig": "async function Bre(A){A.beforeSend?.();let e=await Hyu",
+            "replace_target": "async function Bre(A){A.beforeSend?.();let e=await Hyu",
+            "replace_with": "async function Bre(A){A.beforeSend?.();return;let e=await Hyu",
+            "patched_sig": "async function Bre(A){A.beforeSend?.();return;let e=await Hyu",
+        },
+        {
+            "id": "Jyu",
+            "name": "4. Jyu Transport (Network Sink)",
+            "description": "POST https://center.qoder.sh/api/v1/tracking (transport sink)",
+            "unpatched_sig": 'async function Jyu(A,e="aiCodeTracking.report",t,i){if(i?.(),!pE())',
+            "replace_target": 'async function Jyu(A,e="aiCodeTracking.report",t,i){if(i?.(),!pE())',
+            "replace_with": 'async function Jyu(A,e="aiCodeTracking.report",t,i){return;if(i?.(),!pE())',
+            "patched_sig": 'async function Jyu(A,e="aiCodeTracking.report",t,i){return;if(i?.(),!pE())',
+        }
+    ],
+    "0.4.8": [
         {
             "id": "s4i",
             "name": "1. businessFinish.report (Prompt Leak)",
@@ -313,7 +352,7 @@ def evaluate_runtime_state(content):
 def show_header(qoder_root, qoder_version, target_file, profile_name="Auto-Detect"):
     clear_screen()
     print_colored("================================================================================", CLR_CYAN, bold=True)
-    print_colored("                     QODER PRIVACY HARDENING TOOL v2.1                          ", CLR_CYAN, bold=True)
+    print_colored("                     QODER PRIVACY HARDENING TOOL v2.2                          ", CLR_CYAN, bold=True)
     print_colored("================================================================================", CLR_CYAN, bold=True)
     print_colored(f"Qoder Root  : {qoder_root}", CLR_GRAY)
     print_colored(f"Qoder Ver   : {qoder_version}", CLR_GRAY)
@@ -801,7 +840,7 @@ def main():
         code = restore_backup(qoder_root, qoder_version, target_dir, target_file)
         sys.exit(code)
     elif mode in ("--help", "-h"):
-        print_colored(f"Qoder Privacy Hardening Tool v2.1 (Ubuntu / Linux)", CLR_CYAN, bold=True)
+        print_colored(f"Qoder Privacy Hardening Tool v2.2 (Ubuntu / Linux)", CLR_CYAN, bold=True)
         print("\nUsage:")
         print("  ./apply-qoder-privacy-patch.sh [option]\n")
         print("Options:")
